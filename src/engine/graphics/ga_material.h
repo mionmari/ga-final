@@ -144,3 +144,46 @@ private:
 
 	struct ga_skeleton* _skeleton;
 };
+
+
+/*
+** PBR material.
+*/
+class ga_pbr_material : public ga_material
+{
+public:
+	ga_pbr_material();
+	ga_pbr_material
+	(
+		const char* albedo, 
+		const char* normal,
+		const char* metallic,
+		const char* roughness,
+		const char* ao
+	);
+
+	~ga_pbr_material();
+
+	virtual bool init() override;
+
+	virtual void bind(const ga_mat4f& view_proj, const ga_mat4f& transform, ga_frame_params* params) override;
+
+private:
+	std::string _albedo_file;
+	std::string _normal_file;
+	std::string _metallic_file;
+	std::string _roughness_file;
+	std::string _ao_file;
+
+	ga_shader* _vs;
+	ga_shader* _fs;
+	ga_program* _program;
+
+	ga_texture* _albedo;
+	ga_texture* _normal;
+	ga_texture* _metallic;
+	ga_texture* _roughness;
+	ga_texture* _ao;
+
+	std::chrono::high_resolution_clock::time_point _start_time = std::chrono::high_resolution_clock::now();
+};

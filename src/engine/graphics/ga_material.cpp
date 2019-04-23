@@ -351,3 +351,110 @@ void ga_animated_material::bind(const ga_mat4f& view_proj, const ga_mat4f& trans
 	glEnable(GL_DEPTH_TEST);
 	glDepthMask(GL_TRUE);
 }
+
+
+ga_pbr_material::ga_pbr_material
+(
+	const char* albedo,
+	const char* normal,
+	const char* metallic,
+	const char* roughness,
+	const char* ao
+) :
+	_albedo_file(albedo),
+	_normal_file(normal),
+	_metallic_file(metallic),
+	_roughness_file(roughness),
+	_ao_file(ao)
+{
+}
+
+ga_pbr_material::ga_pbr_material()
+{
+	_albedo_file = "";
+	_normal_file = "";
+	_metallic_file = "";
+	_roughness_file = "";
+	_ao_file = "";
+}
+
+ga_pbr_material::~ga_pbr_material()
+{
+}
+
+bool ga_pbr_material::init()
+{
+	std::string source_vs;
+	load_shader("data/shaders/ga_pbr_vert.glsl", source_vs);
+
+	std::string source_fs;
+	load_shader("data/shaders/ga_pbr_frag.glsl", source_fs);
+
+	_vs = new ga_shader(source_vs.c_str(), GL_VERTEX_SHADER);
+	if (!_vs->compile())
+	{
+		std::cerr << "Failed to compile vertex shader:" << std::endl << _vs->get_compile_log() << std::endl;
+	}
+
+	_fs = new ga_shader(source_fs.c_str(), GL_FRAGMENT_SHADER);
+	if (!_fs->compile())
+	{
+		std::cerr << "Failed to compile fragment shader:\n\t" << std::endl << _fs->get_compile_log() << std::endl;
+	}
+
+	_program = new ga_program();
+	_program->attach(*_vs);
+	_program->attach(*_fs);
+	if (!_program->link())
+	{
+		std::cerr << "Failed to link shader program:\n\t" << std::endl << _program->get_link_log() << std::endl;
+	}
+
+	_albedo = new ga_texture();
+	if (!_albedo->load_from_file(_albedo_file.c_str()))
+	{
+		std::cerr << "Failed to load albedo map: " << _albedo_file << std::endl;
+	}
+
+	_normal = new ga_texture();
+	if (!_albedo->load_from_file(_normal_file.c_str()))
+	{
+		std::cerr << "Failed to load normal map: " << _normal_file << std::endl;
+	}
+
+	_metallic = new ga_texture();
+	if (!_albedo->load_from_file(_metallic_file.c_str()))
+	{
+		std::cerr << "Failed to load metallic map: " << _metallic_file << std::endl;
+	}
+
+	_roughness = new ga_texture();
+	if (!_albedo->load_from_file(_roughness_file.c_str()))
+	{
+		std::cerr << "Failed to load roughness map: " << _roughness_file << std::endl;
+	}
+
+	_ao = new ga_texture();
+	if (!_ao->load_from_file(_ao_file.c_str()))
+	{
+		std::cerr << "Failed to load ao map: " << _ao_file << std::endl;
+	}
+
+	return true;
+}
+
+void ga_pbr_material::bind(const ga_mat4f& view_proj, const ga_mat4f& transform, ga_frame_params* params)
+{
+	ga_uniform mvp_uniform = _program->get_uniform("u_mvp");
+	ga_uniform texture_uniform = _program->get_uniform("u_texture");
+	ga_uniform time_uniform = _program->get_uniform("u_time");
+
+	_program->use();
+
+	/*mvp_uniform.set(transform * view_proj);
+	texture_uniform.set(*_texture, 0);
+	time_uniform.set(std::chrono::duration_cast<std::chrono::duration<float>>(params->_current_time - _start_time).count());
+	glDisable(GL_BLEND);
+	glEnable(GL_DEPTH_TEST);
+	glDepthMask(GL_TRUE);*/
+}
