@@ -1,21 +1,20 @@
+// Original Source: https://learnopengl.com/PBR/Lighting
+
 #version 400
 out vec4 finalColor;
 in vec2 o_uv;
 in vec3 o_normal;
 in vec3 o_worldPos;
 
-// material parameters
-uniform vec3  u_albedo;
-uniform float u_metallic;
-uniform float u_roughness;
-uniform float u_ao;
+uniform sampler2D u_albedo;
+uniform sampler2D u_metallic;
+uniform sampler2D u_roughness;
+uniform sampler2D u_ao;
+uniform bool u_lighting_enabled;
+uniform vec3 u_cam_pos;
 
-// lights
-uniform vec3 u_lightPos[4];
-uniform vec3 u_lightColors[4];
-
-uniform vec3 u_camPos;
-
+const vec3 lightPos = vec3(1.5, 1.5, 1);
+const vec3 lightColor = vec3(20, 20, 20);
 const float PI = 3.14159265359;
   
 float DistributionGGX(vec3 N, vec3 H, float roughness);
@@ -24,49 +23,62 @@ float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness);
 vec3 fresnelSchlick(float cosTheta, vec3 F0);
 
 void main()
-{		
+{	
+    vec3 albedo     = texture(u_albedo, o_uv).rgb;
+    vec3 normal     = o_normal;
+    float metallic  = texture(u_metallic, o_uv).r;
+    float roughness = texture(u_roughness, o_uv).r;
+    float ao        = texture(u_ao, o_uv).r;
+
     vec3 N = normalize(o_normal);
-    vec3 V = normalize(u_camPos - o_worldPos);
+    vec3 V = normalize(lightPos - o_worldPos);
 
     vec3 F0 = vec3(0.04); 
-    F0 = mix(F0, u_albedo, u_metallic);
+    F0 = mix(F0, albedo, metallic);
 	           
     // reflectance equation
     vec3 Lo = vec3(0.0);
-    for(int i = 0; i < 4; ++i) 
-    {
-        // calculate per-light radiance
-        vec3 L = normalize(u_lightPos[i] - o_worldPos);
-        vec3 H = normalize(V + L);
-        float distance    = length(u_lightPos[i] - o_worldPos);
-        float attenuation = 1.0 / (distance * distance);
-        vec3 radiance     = u_lightColors[i] * attenuation;        
         
-        // cook-torrance brdf
-        float NDF = DistributionGGX(N, H, u_roughness);        
-        float G   = GeometrySmith(N, V, L, u_roughness);      
-        vec3 F    = fresnelSchlick(max(dot(H, V), 0.0), F0);       
+    // calculate per-light radiance
+    vec3 L = normalize(lightPos - o_worldPos);
+    vec3 H = normalize(V + L);
+    float distance    = length(lightPos - o_worldPos);
+    float attenuation = 1.0 / (distance * distance);
+    vec3 radiance     = lightColor * attenuation;        
+    
+    // cook-torrance brdf
+    float NDF = DistributionGGX(N, H, roughness);        
+    float G   = GeometrySmith(N, V, L, roughness);      
+    vec3 F    = fresnelSchlick(max(dot(H, V), 0.0), F0);       
+    
+    vec3 kS = F;
+    vec3 kD = vec3(1.0) - kS;
+    kD *= 1.0 - metallic;	  
+    
+    vec3 numerator    = NDF * G * F;
+    float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0);
+    vec3 specular     = numerator / max(denominator, 0.001);  
         
-        vec3 kS = F;
-        vec3 kD = vec3(1.0) - kS;
-        kD *= 1.0 - u_metallic;	  
-        
-        vec3 numerator    = NDF * G * F;
-        float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0);
-        vec3 specular     = numerator / max(denominator, 0.001);  
-            
-        // add to outgoing radiance Lo
-        float NdotL = max(dot(N, L), 0.0);                
-        Lo += (kD * u_albedo / PI + specular) * radiance * NdotL; 
-    }   
+    // add to outgoing radiance Lo
+    float NdotL = max(dot(N, L), 0.0);                
+    Lo += (kD * albedo / PI + specular) * radiance * NdotL; 
   
-    vec3 ambient = vec3(0.03) * u_albedo * u_ao;
-    vec3 color = ambient + Lo;
+    vec3 ambient = vec3(0.03) * albedo * ao;
+    vec3 color = Lo + ambient;
 	
     color = color / (color + vec3(1.0));
     color = pow(color, vec3(1.0/2.2));  
-   
-    finalColor = vec4(color, 1.0);
+
+	if(u_lighting_enabled)
+	{
+		finalColor = vec4(color, 1.0);
+	}
+	else
+	{
+        finalColor = texture(u_albedo, o_uv);
+        //vec4(1.,1.,0.,1.);
+		//finalColor = vec4(albedo, 1.0);
+	}
 }  
 
 float DistributionGGX(vec3 N, vec3 H, float roughness)
@@ -85,7 +97,7 @@ float DistributionGGX(vec3 N, vec3 H, float roughness)
 
 float GeometrySchlickGGX(float NdotV, float roughness)
 {
-    float r = u_roughness + 1.0;
+    float r = roughness + 1.0;
     float k = (r*r) / 8.0;
 
     float num   = NdotV;

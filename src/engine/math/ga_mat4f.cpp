@@ -9,7 +9,6 @@
 
 #include "math/ga_mat4f.h"
 #include "math/ga_math.h"
-#include <iostream>
 
 //#define GA_CLIP_SPACE_DX 1
 #define GA_CLIP_SPACE_GL 1
@@ -44,6 +43,49 @@ void ga_mat4f::make_scaling(float s)
 	data[3][3] = 1.0f;
 }
 
+
+void ga_mat4f::translate(const ga_vec3f& __restrict t)
+{
+	ga_mat4f tmp;
+	tmp.make_translation(t);
+	(*this)  *= tmp;
+}
+
+void ga_mat4f::scale(float s)
+{
+	ga_mat4f tmp;
+	tmp.make_scaling(s);
+	(*this) *= tmp;
+}
+
+void ga_mat4f::make_rotation_x(float angle)
+{
+	make_identity();
+	data[1][1] = cos(angle);
+	data[2][1] = -sin(angle);
+	data[1][2] = sin(angle);
+	data[2][2] = cos(angle);
+}
+
+void ga_mat4f::make_rotation_y(float angle)
+{
+	make_identity();
+	data[0][0] = cos(angle);
+	data[2][0] = sin(angle);
+	data[0][2] = -sin(angle);
+	data[2][2] = cos(angle);
+}
+
+void ga_mat4f::make_rotation_z(float angle)
+{
+	make_identity();
+	data[0][0] = cos(angle);
+	data[1][0] = -sin(angle);
+	data[0][1] = sin(angle);
+	data[1][1] = cos(angle);
+
+}
+
 void ga_mat4f::make_rotation(const ga_quatf& __restrict q)
 {
 	make_identity();
@@ -60,17 +102,24 @@ void ga_mat4f::make_rotation(const ga_quatf& __restrict q)
 	data[3][3] = 1.0f;
 }
 
-void ga_mat4f::translate(const ga_vec3f& __restrict t)
+void ga_mat4f::rotate_x(float angle)
 {
 	ga_mat4f tmp;
-	tmp.make_translation(t);
+	tmp.make_rotation_x(angle);
+	(*this)  *= tmp;
+}
+
+void ga_mat4f::rotate_y(float angle)
+{
+	ga_mat4f tmp;
+	tmp.make_rotation_y(angle);
 	(*this) *= tmp;
 }
 
-void ga_mat4f::scale(float s)
+void ga_mat4f::rotate_z(float angle)
 {
 	ga_mat4f tmp;
-	tmp.make_scaling(s);
+	tmp.make_rotation_z(angle);
 	(*this) *= tmp;
 }
 
@@ -186,13 +235,6 @@ void ga_mat4f::invert()
 	tmp.data[3][3] = (data[2][0] * s[3] - data[2][1] * s[1] + data[2][2] * s[0])  * inv_det;
 
 	(*this) = tmp;
-}
-
-ga_mat4f ga_mat4f::inverse() const
-{
-	ga_mat4f inverse = (*this);
-	inverse.invert();
-	return inverse;
 }
 
 void ga_mat4f::make_orthographic(float left, float right, float bottom, float top, float z_near, float z_far)
@@ -339,17 +381,4 @@ ga_vec3f ga_mat4f::get_up() const
 ga_vec3f ga_mat4f::get_right() const
 {
 	return{ data[0][0], data[0][1], data[0][2] };
-}
-
-void ga_mat4f::print()
-{
-	for (int r = 0; r < 4; r++)
-	{
-		for (int c = 0; c < 4; c++)
-		{
-			std::cout << data[r][c] << " ";
-		}
-		std::cout << std::endl;
-	}
-
 }

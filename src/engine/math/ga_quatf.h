@@ -28,6 +28,7 @@ struct ga_quatf
 
 	/*
 	** Build a quaternion for an axis and angle.
+	** @param result On return, the quaternion representing the axis and angle.
 	** @param axis Normalized axis.
 	** @param angle Angle about axis in radians.
 	*/
@@ -38,9 +39,10 @@ struct ga_quatf
 	}
 
 	/*
-	** Multiply this quaternion by another.
+	** Multiply two quaternions.
+	** @param result On return, the quaternion representing a * b.
+	** @param a The first quaternion.
 	** @param b The second quaternion.
-	** @returns The quaternion representing this * b.
 	*/
 	inline ga_quatf operator*(const ga_quatf& __restrict b) const
 	{
@@ -55,55 +57,6 @@ struct ga_quatf
 		result.v3 += tmp2;
 
 		result.s = (s * b.s) - v3.dot(b.v3);
-
-		return result;
-	}
-
-	/*
-	** Add another quaternion to this one.
-	** @param b The second quaternion.
-	** @returns The quaternion representing this + b.
-	*/
-	inline ga_quatf operator+(const ga_quatf& __restrict b) const
-	{
-		ga_quatf result;
-		result.v4 = v4 + b.v4;
-		return result;
-	}
-
-	/*
-	** Subtract another quaternion from this one.
-	** @param b The second quaternion.
-	** @returns The quaternion representing this - b.
-	*/
-	inline ga_quatf operator-(const ga_quatf& __restrict b) const
-	{
-		ga_quatf result;
-		result.v4 = v4 - b.v4;
-		return result;
-	}
-
-	/*
-	** In-place addition of another quaternion to this.
-	** @param b The second quaternion.
-	** @returns A reference to this quaternion, as the result of this + b.
-	*/
-	inline ga_quatf& operator+=(const ga_quatf& __restrict b)
-	{
-		(*this) = (*this) + b;
-		return (*this);
-	}
-
-	/*
-	** Return a new quaternion which is this quaternion scaled by s.
-	** @param s The float value to scale by.
-	** @returns The quaternion equivalent to this scaled by s.
-	*/
-	inline ga_quatf scale_result(const float s) const
-	{
-		ga_quatf result;
-		result.v4 = v4.scale_result(s);
-		return result;
 	}
 
 	/*
@@ -123,22 +76,5 @@ struct ga_quatf
 	{
 		conjugate();
 		v4.scale(1.0f / v4.mag2());
-	}
-
-	/*
-	** Normalize the quaternion.
-	*/
-	inline void normalize()
-	{
-		v4.normalize();
-	}
-
-	/*
-	** inner product of two quaternions 
-	*/
-	inline float dot(ga_quatf q2)
-	{
-		float result = s * q2.s + x * q2.x + y * q2.y +z * q2.z;
-		return result;
 	}
 };

@@ -24,11 +24,4 @@ public:
 	~ga_camera();
 
 	void update(struct ga_frame_params* params);
-	void rotate(const ga_quatf& rotation);
-
-	const ga_mat4f& get_transform() const { return _transform; }
-	void set_transform(const ga_mat4f& t) { _transform = t; }
-
-private:
-	ga_mat4f _transform;
 };

@@ -232,11 +232,12 @@ void ga_cube_component::update(ga_frame_params* params)
 	const float dt = std::chrono::duration_cast<std::chrono::duration<float>>(params->_delta_time).count();
 
 	// Rotate the cube 60 degrees per second around the y-axis
-
+	/*
 	ga_quatf axis_angle;
 	axis_angle.make_axis_angle(ga_vec3f::y_vector(), ga_degrees_to_radians(60.0f) * dt);
 	get_entity()->rotate(axis_angle);
-
+	*/
+	get_entity()->rotate({ 0,60.0f*dt,0 });
 	// Prepare the draw calls and add it to the list
 	ga_static_drawcall draw;
 	draw._name = "ga_cube_component";

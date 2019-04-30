@@ -28,7 +28,6 @@ public:
 	void set(const class ga_texture& tex, uint32_t unit);
 	void set(float value);
 	void set(const struct ga_vec3f& v);
-	void set(const struct ga_mat4f* mats, uint32_t count);
 
 private:
 	ga_uniform(int32_t location);

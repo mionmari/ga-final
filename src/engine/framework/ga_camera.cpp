@@ -40,28 +40,17 @@ void ga_camera::update(ga_frame_params* params)
 	translation.scale(k_move_speed);
 
 	// By using the camera's directional vectors, we've defined the translation in world space.
-	ga_mat4f world_translation;
-	world_translation.make_translation(translation);
-	_transform = _transform * world_translation;
 
-	// Use arrow keys to pitch and rotate.
-	float rotation = 0.0f;
-	rotation += (params->_button_mask & k_button_left) ? k_rotate_speed : 0.0f;
-	rotation += (params->_button_mask & k_button_right) ? -k_rotate_speed : 0.0f;
+	// Use arrow keys to pitch and yaw.
+	float yaw = 0.0f;
+	yaw += (params->_button_mask & k_button_left) ? k_rotate_speed : 0.0f;
+	yaw += (params->_button_mask & k_button_right) ? -k_rotate_speed : 0.0f;
 	float pitch = 0.0f;
-	pitch += (params->_button_mask & k_button_up) ? -k_rotate_speed : 0.0f;
-	pitch += (params->_button_mask & k_button_down) ? k_rotate_speed : 0.0f;
+	pitch += (params->_button_mask & k_button_up) ? k_rotate_speed : 0.0f;
+	pitch += (params->_button_mask & k_button_down) ? -k_rotate_speed : 0.0f;
 
-	rotation = ga_degrees_to_radians(rotation);
-	pitch = ga_degrees_to_radians(pitch);
-
-	ga_quatf q1, q2, q3;
-	q1.make_axis_angle(ga_vec3f::y_vector(), rotation);
-	q2.make_axis_angle(ga_vec3f::x_vector(), pitch);
-	q3 = q1 * q2; 
-	
+	get_entity()->rotate({ pitch,yaw,0 });
 	get_entity()->translate(translation);
-	get_entity()->rotate(q3);
 
 	ga_vec3f eye = get_entity()->get_transform().get_translation();
 	ga_vec3f at = eye + get_entity()->get_transform().get_forward();
@@ -73,9 +62,3 @@ void ga_camera::update(ga_frame_params* params)
 	params->_view = view;
 }
 
-void ga_camera::rotate(const ga_quatf& rotation)
-{
-	ga_mat4f rotation_matrix;
-	rotation_matrix.make_rotation(rotation);
-	_transform = rotation_matrix * _transform;
-}

@@ -21,13 +21,8 @@
 
 void ga_uniform::set(const ga_mat4f& mat)
 {
+	// TODO: Homework 3 - Set the value of the uniform variable at location _location to mat
 	glUniformMatrix4fv(_location, 1, GL_FALSE, (GLfloat*)mat.data);
-}
-
-
-void ga_uniform::set(const ga_mat4f* mats, uint32_t count)
-{
-	glUniformMatrix4fv(_location, count, GL_TRUE, (const GLfloat*)mats[0].data);
 }
 
 void ga_uniform::set(const ga_texture& tex, uint32_t unit)

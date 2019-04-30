@@ -8,12 +8,6 @@
 */
 
 #include "ga_material.h"
-#include "ga_model_component.h"
-#include "graphics/ga_animation.h"
-#include "graphics/ga_mesh.h"
-#include "graphics/ga_node.h"
-#include "graphics/ga_skeleton.h"
-
 //#include "ga_frame_params.h"
 
 #include <cassert>
@@ -172,7 +166,7 @@ bool ga_lit_texture_material::init()
 	load_shader("data/shaders/ga_lit_texture_vert.glsl", source_vs);
 
 	std::string source_fs;
-	load_shader("data/shaders/ga_lit_texture_frag.glsl", source_fs);
+	load_shader("data/shaders/ga_lit_textur_frag.glsl", source_fs);
 
 	_vs = new ga_shader(source_vs.c_str(), GL_VERTEX_SHADER);
 	if (!_vs->compile())
@@ -274,85 +268,6 @@ void ga_lit_material::bind(const ga_mat4f& view_proj, const ga_mat4f& transform,
 	glDepthMask(GL_TRUE);
 }
 
-ga_animated_material::ga_animated_material(ga_skeleton* skeleton) : _skeleton(skeleton)
-{
-
-}
-
-ga_animated_material::ga_animated_material()
-{
-	_skeleton = nullptr;
-}
-
-ga_animated_material::~ga_animated_material()
-{
-}
-
-bool ga_animated_material::init()
-{
-	std::string source_vs;
-	load_shader("data/shaders/ga_animated_vert.glsl", source_vs);
-
-	std::string source_fs;
-	load_shader("data/shaders/ga_animated_frag.glsl", source_fs);
-
-	_vs = new ga_shader(source_vs.c_str(), GL_VERTEX_SHADER);
-	if (!_vs->compile())
-	{
-		std::cerr << "Failed to compile vertex shader:" << std::endl << _vs->get_compile_log() << std::endl;
-	}
-
-	_fs = new ga_shader(source_fs.c_str(), GL_FRAGMENT_SHADER);
-	if (!_fs->compile())
-	{
-		std::cerr << "Failed to compile fragment shader:\n\t" << std::endl << _fs->get_compile_log() << std::endl;
-	}
-
-	_program = new ga_program();
-	_program->attach(*_vs);
-	_program->attach(*_fs);
-	if (!_program->link())
-	{
-		std::cerr << "Failed to link shader program:\n\t" << std::endl << _program->get_link_log() << std::endl;
-	}
-
-	return true;
-}
-
-void ga_animated_material::bind(const ga_mat4f& view_proj, const ga_mat4f& transform, ga_frame_params* params)
-{
-	ga_uniform mvp_uniform = _program->get_uniform("u_mvp");
-	ga_uniform skin_uniform = _program->get_uniform("u_skin");
-	ga_uniform hasweights_uniform = _program->get_uniform("u_hasweights");
-	_program->use();
-
-
-	mvp_uniform.set(transform * view_proj);
-	
-	if (_skeleton != nullptr && _skeleton->_joints.size()>0)
-	{
-		// Collect the skinning matrices.
-		ga_mat4f skin[ga_skeleton::k_max_skeleton_joints];
-		for (uint32_t i = 0; i < _skeleton->_joints.size(); ++i)
-		{
-			assert(i < ga_skeleton::k_max_skeleton_joints);
-			skin[i] = _skeleton->_joints[i]->_skin_matrix;
-		}
-		skin_uniform.set(skin, ga_skeleton::k_max_skeleton_joints);
-		hasweights_uniform.set(true);
-	}
-	else
-	{
-		hasweights_uniform.set(false);
-
-	}
-
-	glDisable(GL_BLEND);
-	glEnable(GL_DEPTH_TEST);
-	glDepthMask(GL_TRUE);
-}
-
-
 ga_pbr_material::ga_pbr_material
 (
 	const char* albedo,
@@ -417,19 +332,19 @@ bool ga_pbr_material::init()
 	}
 
 	_normal = new ga_texture();
-	if (!_albedo->load_from_file(_normal_file.c_str()))
+	if (!_normal->load_from_file(_normal_file.c_str()))
 	{
 		std::cerr << "Failed to load normal map: " << _normal_file << std::endl;
 	}
 
 	_metallic = new ga_texture();
-	if (!_albedo->load_from_file(_metallic_file.c_str()))
+	if (!_metallic->load_from_file(_metallic_file.c_str()))
 	{
 		std::cerr << "Failed to load metallic map: " << _metallic_file << std::endl;
 	}
 
 	_roughness = new ga_texture();
-	if (!_albedo->load_from_file(_roughness_file.c_str()))
+	if (!_roughness->load_from_file(_roughness_file.c_str()))
 	{
 		std::cerr << "Failed to load roughness map: " << _roughness_file << std::endl;
 	}
@@ -446,15 +361,30 @@ bool ga_pbr_material::init()
 void ga_pbr_material::bind(const ga_mat4f& view_proj, const ga_mat4f& transform, ga_frame_params* params)
 {
 	ga_uniform mvp_uniform = _program->get_uniform("u_mvp");
-	ga_uniform texture_uniform = _program->get_uniform("u_texture");
-	ga_uniform time_uniform = _program->get_uniform("u_time");
+	ga_uniform world_mat_uniform = _program->get_uniform("u_world");
+	ga_uniform cam_pos_uniform = _program->get_uniform("u_cam_pos");
+	ga_uniform lighting_enabled_uniform = _program->get_uniform("u_lighting_enabled");
+
+	ga_uniform albedo_uniform = _program->get_uniform("u_albedo");
+	//ga_uniform normal_uniform = _program->get_uniform("u_normal");
+	ga_uniform metallic_uniform = _program->get_uniform("u_metallic");
+	ga_uniform roughness_uniform = _program->get_uniform("u_roughness");
+	ga_uniform ao_uniform = _program->get_uniform("u_ao");
 
 	_program->use();
 
-	/*mvp_uniform.set(transform * view_proj);
-	texture_uniform.set(*_texture, 0);
-	time_uniform.set(std::chrono::duration_cast<std::chrono::duration<float>>(params->_current_time - _start_time).count());
+	mvp_uniform.set(transform * view_proj);
+	world_mat_uniform.set(transform);
+	lighting_enabled_uniform.set(params->_render_settings->_lighting_enabled);
+	cam_pos_uniform.set(params->_cam_pos);
+
+	albedo_uniform.set(*_albedo, 0);
+	//normal_uniform.set(*_normal, 1);
+	metallic_uniform.set(*_metallic, 1);
+	roughness_uniform.set(*_roughness, 2);
+	ao_uniform.set(*_ao, 3);
+
 	glDisable(GL_BLEND);
 	glEnable(GL_DEPTH_TEST);
-	glDepthMask(GL_TRUE);*/
+	glDepthMask(GL_TRUE);
 }

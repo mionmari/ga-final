@@ -8,8 +8,6 @@
 
 working devel version
 */
-#include <stdlib.h>
-
 #include "framework/ga_camera.h"
 #include "framework/ga_compiler_defines.h"
 #include "framework/ga_input.h"
@@ -52,10 +50,16 @@ static void gui_test(ga_frame_params* params);
 char g_root_path[256];
 static void set_root_path(const char* exepath);
 
-ga_entity cube;
-ga_entity model;
-ga_entity model2;
-ga_entity bendybar;
+ga_entity sphere_rust;
+ga_entity sphere_grass;
+ga_entity sphere_wood;
+
+ga_entity couch_rust;
+ga_entity couch_grass;
+ga_entity couch_wood;
+
+int model_sel = 0;
+int mat_sel = 0;
 
 int main(int argc, const char** argv)
 {
@@ -72,31 +76,62 @@ int main(int argc, const char** argv)
 	ga_entity camera_ent;
 	ga_camera* camera = new ga_camera(&camera_ent);
 
-	camera_ent.translate({ 0.0f, 3.0f, 10.0f });
-	ga_quatf camera_rot;
-	camera_rot.make_axis_angle(ga_vec3f::y_vector(), ga_degrees_to_radians(180));
-	camera_ent.rotate(camera_rot);
+	camera_ent.translate({ 0.0f, 2.0f, 7.0f });
+	camera_ent.rotate({ -15.0f, 180.0f, 0 });
 	sim->add_entity(&camera_ent);
 
-	ga_cube_component cube_mesh(&cube, "data/textures/magic.png");
-	sim->add_entity(&cube);
-	cube.set_active(false);
+	// save material maps
+	struct ga_maps rust_maps;
+	rust_maps.albedo_map = "data/textures/rustediron1-alt2-Unreal-Engine/rustediron2_basecolor.png";
+	rust_maps.normal_map = "data/textures/rustediron1-alt2-Unreal-Engine/rustediron2_normal.png";
+	rust_maps.metallic_map = "data/textures/rustediron1-alt2-Unreal-Engine/rustediron2_metallic.png";
+	rust_maps.roughness_map = "data/textures/rustediron1-alt2-Unreal-Engine/rustediron2_roughness.png";
+	rust_maps.ao_map = "data/textures/rustediron1-alt2-Unreal-Engine/rustediron2_ao.png";
 
-	ga_model_component model_mesh(&model, "data/models/sphere.obj");
-	model.set_active(false);
-	sim->add_entity(&model);
+	struct ga_maps grass_maps;
+	grass_maps.albedo_map = "data/textures/grass1/grass1-albedo3.png";
+	grass_maps.normal_map = "data/textures/grass1/grass1-normal1-dx.png";
+	grass_maps.metallic_map = "data/textures/grass1/grass1-metal.png";
+	grass_maps.roughness_map = "data/textures/grass1/grass1-rough.png";
+	grass_maps.ao_map = "data/textures/grass1/grass1-ao.png";
 
-	ga_model_component model_mesh2(&model2, "data/models/Fox.dae");
-	model2.set_active(false);
-	sim->add_entity(&model2);
+	struct ga_maps wood_maps;
+	wood_maps.albedo_map = "data/textures/bamboo-wood-semigloss-Unreal-Engine/bamboo-wood-semigloss-albedo.png";
+	wood_maps.normal_map = "data/textures/bamboo-wood-semigloss-Unreal-Engine/bamboo-wood-semigloss-normal.png";
+	wood_maps.metallic_map = "data/textures/bamboo-wood-semigloss-Unreal-Engine/bamboo-wood-semigloss-metal.png";
+	wood_maps.roughness_map = "data/textures/bamboo-wood-semigloss-Unreal-Engine/bamboo-wood-semigloss-roughness.png";
+	wood_maps.ao_map = "data/textures/bamboo-wood-semigloss-Unreal-Engine/bamboo-wood-semigloss-ao.png";
 
-	ga_model_component animated_mesh(&bendybar, "data/models/bendybar_animated.fbx");
-	bendybar.set_active(true);
-	sim->add_entity(&bendybar);
+	
+	// sphere models
+	ga_model_component sphere_rust_mesh(&sphere_rust, "data/models/sphere_smooth.obj", &rust_maps);
+	sphere_rust.set_active(true);
+	sim->add_entity(&sphere_rust);
+
+	ga_model_component sphere_grass_mesh(&sphere_grass, "data/models/sphere_smooth.obj", &grass_maps);
+	sphere_grass.set_active(false);
+	sim->add_entity(&sphere_grass);
+
+	ga_model_component sphere_wood_mesh(&sphere_wood, "data/models/sphere_smooth.obj", &wood_maps);
+	sphere_wood.set_active(false);
+	sim->add_entity(&sphere_wood);
+
+	// torus models
+	ga_model_component couch_rust_mesh(&couch_rust, "data/models/couch.obj", &rust_maps);
+	couch_rust.set_active(false);
+	sim->add_entity(&couch_rust);
+
+	ga_model_component couch_grass_mesh(&couch_grass, "data/models/couch.obj", &grass_maps);
+	couch_grass.set_active(false);
+	sim->add_entity(&couch_grass);
+
+	ga_model_component couch_wood_mesh(&couch_wood, "data/models/couch.obj", &wood_maps);
+	couch_wood.set_active(false);
+	sim->add_entity(&couch_wood);
+
 
 	// Create the default font:
 	g_font = new ga_font("data/fonts/ttf-bitstream-vera-1.10/VeraMono.ttf", 24.0f, 512, 512);
-
 
 	// Main loop:
 	while (true)
@@ -129,7 +164,6 @@ int main(int argc, const char** argv)
 	delete camera;
 
 	ga_job::shutdown();
-
 	return 0;
 }
 
@@ -137,67 +171,78 @@ int main(int argc, const char** argv)
 static void gui_test(ga_frame_params* params)
 {
 	ga_label("Model Viewer", 20, 100, params);
+	ga_label("Material", 20, 175, params);
+	ga_label("Model", 1050, 175, params);
 
-	
-	if (ga_checkbox(params->_render_settings->_lighting_enabled, "Enable Lighting", 20.0f, 150.0f, params).get_clicked(params))
+	if (ga_checkbox(params->_render_settings->_lighting_enabled, "Enable Lighting", 20.0f, 200.0f, params).get_clicked(params))
 	{
+		// TODO: Homework 4
+		// toggle lighting 
 		params->_render_settings->_lighting_enabled = !params->_render_settings->_lighting_enabled;
-	}
+	}	
 	
-	if (ga_button("Show Cube", 20.0f, 200.0f, params).get_clicked(params))
+	// Material buttons
+	if (ga_button("Rusted Metal", 20.0f, 250.0f, params).get_clicked(params))
 	{
-		cube.set_active(true);
-		model.set_active(false);
-		model2.set_active(false);
-		bendybar.set_active(false);
-
+		mat_sel = 0;
 	}
-	if (ga_button("Show Model 1", 20.0f, 250.0f, params).get_clicked(params))
+	if (ga_button("Grass", 20.0f, 300.0f, params).get_clicked(params))
 	{
-		cube.set_active(false);
-		model.set_active(true);
-		model2.set_active(false);
-		bendybar.set_active(false);
-
+		mat_sel = 1;
 	}
-	if (ga_button("Show Model 2", 20.0f, 300.0f, params).get_clicked(params))
+	if (ga_button("Glossy Wood", 20.0f, 350.0f, params).get_clicked(params))
 	{
-		cube.set_active(false);
-		model.set_active(false);
-		model2.set_active(true);
-		bendybar.set_active(false);
-
-	}
-	if (ga_button("Show Bendy Bar", 20.0f, 350.0f, params).get_clicked(params))
-	{
-		cube.set_active(false);
-		model.set_active(false);
-		model2.set_active(false);
-		bendybar.set_active(true);
+		mat_sel = 2;
 	}
 
-	/*
-	// Draws checkbox. Checking the box sets show_button = true.
-	static bool show_button = false;
-	if (ga_checkbox(show_button, "Check this box to show The Button", 20.0f, 20.0f, params).get_clicked(params))
+	// Model butttons
+	if (ga_button("Sphere", 1050.0f, 200.0f, params).get_clicked(params))
 	{
-		show_button = !show_button;
+		model_sel = 0;
+	}
+	if (ga_button("Couch", 1050.0f, 250.0f, params).get_clicked(params))
+	{
+		model_sel = 1;
 	}
 
-	// Draws button. Pressing the button shows message.
-	static int pressed_counter = 0;
-	if (show_button && ga_button("The Button", 20.0f, 60.0f, params).get_clicked(params))
-	{
-		pressed_counter = 60;
-	}
+	sphere_rust.set_active(false);
+	sphere_grass.set_active(false);
+	sphere_wood.set_active(false);
 
-	// Draws label for pressed_counter frames.
-	if (pressed_counter > 0)
+	couch_rust.set_active(false);
+	couch_grass.set_active(false);
+	couch_wood.set_active(false);
+
+	if (model_sel == 0) 
 	{
-		ga_label("The Button was pressed!", 20.0f, 100.0f, params);
-		--pressed_counter;
+		if (mat_sel == 0) 
+		{
+			sphere_rust.set_active(true);
+		}
+		else if (mat_sel == 1) 
+		{
+			sphere_grass.set_active(true);
+		}
+		else if (mat_sel == 2)
+		{
+			sphere_wood.set_active(true);
+		}
 	}
-	*/
+	else if (model_sel == 1) 
+	{
+		if (mat_sel == 0)
+		{
+			couch_rust.set_active(true);
+		}
+		else if (mat_sel == 1)
+		{
+			couch_grass.set_active(true);
+		}
+		else if (mat_sel == 2)
+		{
+			couch_wood.set_active(true);
+		}
+	}
 }
 
 

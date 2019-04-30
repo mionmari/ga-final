@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 3.6)
-project (ga6)
+project (ga3)
 
 # SDL: for windowing and input:
 set(SDL_AUDIO_ENABLED_BY_DEFAULT OFF)
@@ -30,6 +30,8 @@ link_directories ("${CMAKE_CURRENT_SOURCE_DIR}/../3rdparty/glew-2.1.0/lib/Releas
 include_directories ("${CMAKE_CURRENT_SOURCE_DIR}/../3rdparty/assimp/include")
 link_directories ("${CMAKE_CURRENT_SOURCE_DIR}/../3rdparty/assimp/lib")
 
+
+
 # GA framework and homeworks:
 include_directories ("${CMAKE_CURRENT_SOURCE_DIR}")
 file(GLOB_RECURSE GA_SOURCE_FILES ${CMAKE_CURRENT_SOURCE_DIR}/*.cpp)
@@ -40,7 +42,8 @@ if (MSVC)
 endif()
 
 add_executable(ga ${GA_SOURCE_FILES} always_copy_data.h)
-target_link_libraries(ga SDL2 SDL2main SDL2test glew32s opengl32  assimp-vc140-mt.lib IrrXML.lib zlibstaticd.lib)
+target_link_libraries(ga SDL2 SDL2main SDL2test glew32s opengl32 assimp-vc140-mt.lib IrrXML.lib zlibstaticd.lib)
+
 if (MSVC)
 	set_target_properties(ga PROPERTIES LINK_FLAGS "/ignore:4098 /ignore:4099")
 endif()

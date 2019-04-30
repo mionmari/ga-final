@@ -14,23 +14,29 @@
 
 ga_button::ga_button(const char* text, float x, float y, ga_frame_params* params)
 {
-	extern ga_font* g_font;
-	g_font->print(params, text, x, y, k_text_color, &_min, &_max);
+	// TODO: Homework 4
 
-	if (get_hover(params))
-	{
-		draw_outline(params, _min, _max, k_button_hover_color, k_button_offset);
-	}
-	else
-	{
-		draw_outline(params, _min, _max, k_button_color, k_button_offset);
-	}
+	// Compute min/max
+	_min = ga_vec2f{ x, y };
+	_max = ga_vec2f{ x + 170, y + 30 };
 
-	if (get_pressed(params))
+	// Draw the button
+	draw_outline(params, _min, _max, k_button_color, k_button_offset); // outline
+	extern ga_font* g_font; // create font object
+
+	// fill color
+	ga_vec3f color = k_button_color;
+	if (get_hover(params)) 
 	{
-		draw_fill(params, _min, _max, k_button_press_color);
-		g_font->print(params, text, x, y, k_text_color);
+		color = k_button_hover_color;
 	}
+	else if (get_pressed(params))
+	{
+		color = k_button_press_color;
+	}
+	draw_fill(params, _min, _max, color);
+
+	g_font->print(params, text, x + 10, y + 22, k_text_color); // text
 }
 
 ga_button::~ga_button()
@@ -39,19 +45,22 @@ ga_button::~ga_button()
 
 bool ga_button::get_hover(const ga_frame_params* params) const
 {
-	return
-		_min.x <= params->_mouse_x &&
-		_min.y <= params->_mouse_y &&
-		_max.x >= params->_mouse_x &&
-		_max.y >= params->_mouse_y;
+	// TODO: Homework 4
+	return params->_mouse_press_mask == 0 &&
+		params->_mouse_click_mask == 0 &&
+		mouse_in_range(params, _min, _max);
 }
 
 bool ga_button::get_pressed(const ga_frame_params* params) const
 {
-	return params->_mouse_press_mask != 0 && get_hover(params);
+	// TODO: Homework 4
+	return params->_mouse_press_mask != 0 &&
+		mouse_in_range(params, _min, _max);
 }
 
 bool ga_button::get_clicked(const ga_frame_params* params) const
 {
-	return params->_mouse_click_mask != 0 && get_hover(params);
+	// TODO: Homework 4
+	return params->_mouse_click_mask != 0 && 
+		mouse_in_range(params, _min, _max);
 }

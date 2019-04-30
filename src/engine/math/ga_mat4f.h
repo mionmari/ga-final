@@ -9,9 +9,9 @@
 ** This file is distributed under the MIT License. See LICENSE.txt.
 */
 
-#include "math/ga_quatf.h"
 #include "math/ga_vec3f.h"
 #include "math/ga_vec4f.h"
+#include "math/ga_quatf.h"
 
 /*
 ** Floating point 4x4 matrix.
@@ -36,7 +36,22 @@ struct ga_mat4f
 	void make_scaling(float s);
 
 	/*
-	** Build a rotation matrix.
+	** Build a counter-clockwise rotation about X matrix.
+	*/
+	void make_rotation_x(float angle);
+
+	/*
+	** Build a counter-clockwise rotation about X matrix.
+	*/
+	void make_rotation_y(float angle);
+
+	/*
+	** Build a counter-clockwise rotation about X matrix.
+	*/
+	void make_rotation_z(float angle);
+
+	/*
+	** Build a rotation matrix using a quaternion
 	*/
 	void make_rotation(const ga_quatf& __restrict q);
 
@@ -51,7 +66,22 @@ struct ga_mat4f
 	void scale(float s);
 
 	/*
-	** Apply rotation to the given matrix.
+	** Apply counter-clockwise rotation about X to the given matrix.
+	*/
+	void rotate_x(float angle);
+
+	/*
+	** Apply counter-clockwise rotation about Y to the given matrix.
+	*/
+	void rotate_y(float angle);
+
+	/*
+	** Apply counter-clockwiser cotation about Z to the given matrix.
+	*/
+	void rotate_z(float angle);
+
+	/*
+	** Apply rotation to the given matrix using a quaternion 
 	*/
 	void rotate(const ga_quatf& __restrict q);
 
@@ -92,11 +122,6 @@ struct ga_mat4f
 	** Invert the given matrix.
 	*/
 	void invert();
-
-	/*
-	** Return the inverse of this matrix.
-	*/
-	ga_mat4f inverse() const;
 
 	/*
 	** Build a orthographic projection matrix.
@@ -152,6 +177,4 @@ struct ga_mat4f
 	** The third column of the matrix.
 	*/
 	ga_vec3f get_right() const;
-
-	void print();
 };

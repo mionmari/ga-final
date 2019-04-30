@@ -53,13 +53,23 @@ void ga_entity::translate(const ga_vec3f& translation)
 	_transform.translate(translation);
 }
 
+void ga_entity::rotate(const ga_vec3f& rotation)
+{
+	ga_mat4f rotation_matrix;
+	rotation_matrix.make_identity();
 
+	rotation_matrix.rotate_y(ga_degrees_to_radians(rotation.y));
+	rotation_matrix.rotate_z(ga_degrees_to_radians(rotation.z));
+	rotation_matrix.rotate_x(ga_degrees_to_radians(rotation.x));
 
+	_transform = rotation_matrix * _transform;
+}
 
+/*
 void ga_entity::rotate(const ga_quatf& rotation)
 {
 	ga_mat4f rotation_m;
 	rotation_m.make_rotation(rotation);
 	_transform = rotation_m * _transform;
 }
-
+*/

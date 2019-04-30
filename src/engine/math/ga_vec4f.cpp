@@ -45,4 +45,3 @@ ga_vec4f ga_vec4f::w_vector()
 {
 	return vec4f_w;
 }
-

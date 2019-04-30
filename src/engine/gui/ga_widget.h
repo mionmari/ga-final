@@ -27,4 +27,6 @@ protected:
 	void draw_outline(struct ga_frame_params* params, const struct ga_vec2f& min, const struct ga_vec2f& max, const struct ga_vec3f& color, float offset);
 	void draw_check(struct ga_frame_params* params, const struct ga_vec2f& min, const struct ga_vec2f& max, const struct ga_vec3f& color);
 	void draw_fill(struct ga_frame_params* params, const struct ga_vec2f& min, const struct ga_vec2f& max, const struct ga_vec3f& color);
+
+	bool ga_widget::mouse_in_range(const ga_frame_params* params, const struct ga_vec2f& min, const struct ga_vec2f&  max) const;
 };

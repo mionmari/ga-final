@@ -9,12 +9,9 @@
 
 #include "ga_model_component.h"
 #include "ga_material.h"
-#include "math/ga_math.h"
+
 #include "entity/ga_entity.h"
-#include "graphics/ga_skeleton.h"
-#include "graphics/ga_node.h"
-#include "graphics/ga_mesh.h"
-#include "graphics/ga_animation.h"
+
 /* assimp include files. These three are usually needed. */
 
 #include <assimp/Importer.hpp>      // C++ importer interface
@@ -24,10 +21,8 @@
 #include <GL/glew.h>
 #include <iostream>
 #include <cassert>
-#include <string>
 
-
-ga_model_component::ga_model_component(ga_entity* ent, const char* model_file) : ga_component(ent)
+ga_model_component::ga_model_component(ga_entity* ent, const char* model_file, const struct ga_maps* maps) : ga_component(ent)
 {
 	extern char g_root_path[256];
 	Assimp::Importer importer;
@@ -39,7 +34,7 @@ ga_model_component::ga_model_component(ga_entity* ent, const char* model_file) :
 		aiProcess_Triangulate |
 		aiProcess_JoinIdenticalVertices |
 		aiProcess_SortByPType);
-
+	
 	if (!_scene)
 	{
 		std::cout << "error: couldn't load obj\n";
@@ -47,70 +42,7 @@ ga_model_component::ga_model_component(ga_entity* ent, const char* model_file) :
 	else
 	{
 		// process the scene
-		std::cout << "number of meshes: " << _scene->mNumMeshes << std::endl;	
-
-		// process the meshes
-		for (int i = 0; i < _scene->mNumMeshes; i++)
-		{
-			ga_mesh* mesh = new ga_mesh();
-			mesh->create_from_aiMesh(_scene->mMeshes[i], _scene);
-			mesh->make_buffers();
-			_meshes.push_back(mesh);
-		}
-
-		// recursively process the node tree
-		process_node_recursive(_scene->mRootNode, _scene, &_root);
-
-		// connect the joint pointers to the scenegraph nodes
-		for (ga_mesh* mesh : _meshes)
-		{
-			for (ga_joint* joint : mesh->_skeleton._joints)
-			{
-				ga_node* node = _root.find(joint->_name);
-				joint->_node_ptr = node;
-			}
-		}
-
-		// process animations
-
-		if (_scene->HasAnimations())
-		{
-			for (int i = 0; i < _scene->mNumAnimations; i++)
-			{
-				aiAnimation* clip = _scene->mAnimations[i];
-				ga_animclip* clip2 = new ga_animclip();
-
-				clip2->_name = clip->mName.C_Str();
-				clip2->_duration = clip->mDuration;
-				clip2->_fps = clip->mTicksPerSecond;
-	
-				for (int j = 0; j < clip->mNumChannels; j++)
-				{
-					aiNodeAnim* channel = clip->mChannels[j];
-					ga_animchannel* channel2 = new ga_animchannel();
-
-					channel2->_node = _root.find(channel->mNodeName.C_Str());
-
-					for (int k = 0; k < channel->mNumRotationKeys; k++)
-					{
-						
-						aiQuatKey rotation_key = channel->mRotationKeys[k];
-						aiVectorKey translate_key = channel->mPositionKeys[k];
-						aiQuaternion q1 = rotation_key.mValue;
-						aiVector3D p = translate_key.mValue;
-
-						ga_animkey key;
-						key._time = rotation_key.mTime;
-						key._rotation = { q1.x,q1.y,q1.z,q1.w };
-						key._translation = { p.x, p.y, p.z };
-						channel2->_keys.push_back(key);
-					}
-					clip2->_channels.push_back(channel2);
-				}
-				_animation.add_clip(clip2);
-			}
-			_animation.play(0);
-		}
+		process_node_recursive(_scene->mRootNode, _scene, maps);
 	}
 }
 
@@ -119,48 +51,187 @@ ga_model_component::~ga_model_component()
 	
 }
 
-
-void ga_model_component::process_node_recursive(aiNode* ai_node, const aiScene* scene, ga_node* node)
+void ga_model_component::process_node_recursive(aiNode* node, const aiScene* scene, const struct ga_maps* maps)
 {
-	// apply transformation
-
-	ai_mat4_to_ga_mat4(ai_node->mTransformation, node->_transform);
-	node->_transform.transpose();
-	node->_name = ai_node->mName.C_Str();
 	// process my meshes
-	for (int i = 0; i < ai_node->mNumMeshes; i++)
+	for (int i = 0; i < node->mNumMeshes; i++)
 	{
-		node->_meshes.push_back(_meshes[ai_node->mMeshes[i]]);
+		ga_mesh* mesh = new ga_mesh();
+		mesh->create_from_aiMesh(_scene->mMeshes[node->mMeshes[i]], _scene, maps);
+		_meshes.push_back(mesh);
 	}
-
 	// process my children
-	for (int i = 0; i < ai_node->mNumChildren; i++)
+	for (int i = 0; i < node->mNumChildren; i++)
 	{
-		ga_node* child_node = new ga_node(node);
-		process_node_recursive(ai_node->mChildren[i], scene, child_node);
-		node->_children.push_back(child_node);
+		process_node_recursive(node->mChildren[i], scene, maps);
 	}
 }
 
 void ga_model_component::update(ga_frame_params* params)
 {
 	const float dt = std::chrono::duration_cast<std::chrono::duration<float>>(params->_delta_time).count();
+	get_entity()->rotate({ 0,60.0f*dt,0 });
 
-	ga_quatf axis_angle;
-	axis_angle.make_axis_angle(ga_vec3f::y_vector(), ga_degrees_to_radians(60.0f) * dt);
-	get_entity()->rotate(axis_angle);
-
-	// update the animations
-
-	_animation.update(dt);
-
-	// update the world matrix for all nodes in the scenegraph
-	_root.update(params, get_entity()->get_transform());
-
-	// update the bones in the meshes
 	for (ga_mesh* m : _meshes)
 	{
-		m->update(params);
+		ga_static_drawcall draw;
+		draw._name = "model";
+		m->assemble_drawcall(draw);
+		draw._transform = get_entity()->get_transform();
+
+		while (params->_static_drawcall_lock.test_and_set(std::memory_order_acquire)) {}
+		params->_static_drawcalls.push_back(draw);
+		params->_static_drawcall_lock.clear(std::memory_order_release);
 	}
-	_root.draw_recursive(params);
 }
+
+ga_mesh::ga_mesh()
+{
+	_index_count = 0;
+	_material = nullptr;
+	_vao = 0;
+}
+ga_mesh::~ga_mesh()
+{
+	glDeleteBuffers(4, _vbo);
+	glDeleteVertexArrays(1, &_vao);
+
+}
+
+void ga_mesh::create_from_aiMesh(aiMesh* mesh, const aiScene* scene, const struct ga_maps* maps)
+{
+	GLenum err;
+	
+	// request vertex array object and vertex buffer objects
+	glGenVertexArrays(1, &_vao);
+	glBindVertexArray(_vao);
+	glGenBuffers(4, _vbo);
+
+	// TODO: Homework 4
+	// load vertex positions, indices, uv's and normals from importer mesh into our data structure
+
+	/*ga_lit_material* mat = new ga_lit_material();
+	mat->init();*/
+
+
+	ga_pbr_material* mat = new ga_pbr_material
+	(	
+		maps->albedo_map,
+		maps->normal_map, 
+		maps->metallic_map, 
+		maps->roughness_map, 
+		maps->ao_map
+	);
+	mat->init();
+	_material = mat;
+
+
+	// Load vertex positions
+	for (int i = 0; i < mesh->mNumVertices; ++i) 
+	{
+		ga_vec3f vert = { mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z };
+		_vertex_array.push_back(vert);
+	}
+
+
+	// Load indices
+	for (int i = 0; i < mesh->mNumFaces; ++i)
+	{
+		_index_array.push_back(mesh->mFaces[i].mIndices[0]);
+		_index_array.push_back(mesh->mFaces[i].mIndices[1]);
+		_index_array.push_back(mesh->mFaces[i].mIndices[2]);
+	}
+
+	// Load texture uvs
+	if (mesh->HasTextureCoords(0)) 
+	{
+		for (int i = 0; i < mesh->mNumVertices; ++i)
+		{
+			ga_vec2f tex = { mesh->mTextureCoords[0][i].x, mesh->mTextureCoords[0][i].y };
+			_texcoords.push_back(tex);
+		}
+	}
+
+	// Load normals
+	for (int i = 0; i < mesh->mNumVertices; ++i) 
+	{
+		ga_vec3f norm = { mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z };
+		_normals.push_back(norm);
+	}
+
+	// TODO: Homework 4
+	// set the diffuse color for the material 
+	/*_material = mat;
+	_material->set_color(ga_vec3f{ 0.5f, 0.5f, 0.5f });*/
+
+	// TODO: Homework 4 
+	// set up vertex and element array buffers for positions, indices, uv's and normals
+
+	// Set up buffer for positions
+	glBindBuffer(GL_ARRAY_BUFFER, _vbo[0]);
+	assert(glGetError() == GL_NO_ERROR);
+	glBufferData(GL_ARRAY_BUFFER, _vertex_array.size() * sizeof(ga_vec3f), &_vertex_array.front(), GL_STATIC_DRAW);
+	assert(glGetError() == GL_NO_ERROR);
+
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+	assert(glGetError() == GL_NO_ERROR);
+	glEnableVertexAttribArray(0);
+	assert(glGetError() == GL_NO_ERROR);
+
+	// Set up buffer for indices
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _vbo[1]);
+	assert(glGetError() == GL_NO_ERROR);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, _index_array.size() * sizeof(GLushort), &_index_array.front(), GL_STATIC_DRAW);
+	assert(glGetError() == GL_NO_ERROR);
+
+	_index_count = _index_array.size();
+
+	glVertexAttribPointer(1, 3, GL_UNSIGNED_SHORT, GL_FALSE, 0, 0);
+	assert(glGetError() == GL_NO_ERROR);
+	glEnableVertexAttribArray(1);
+	assert(glGetError() == GL_NO_ERROR);
+
+
+	// Set up buffer for texcoords uvs
+	if (mesh->HasTextureCoords(0))
+	{
+		glBindBuffer(GL_ARRAY_BUFFER, _vbo[2]);
+		assert(glGetError() == GL_NO_ERROR);
+		glBufferData(GL_ARRAY_BUFFER, _texcoords.size() * sizeof(ga_vec2f), &_texcoords.front(), GL_STATIC_DRAW);
+		assert(glGetError() == GL_NO_ERROR);
+
+		glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 0, 0);
+		assert(glGetError() == GL_NO_ERROR);
+		glEnableVertexAttribArray(2);
+		assert(glGetError() == GL_NO_ERROR);
+	}
+
+
+	// Set up buffer for normals
+	glBindBuffer(GL_ARRAY_BUFFER, _vbo[3]);
+	assert(glGetError() == GL_NO_ERROR);
+	glBufferData(GL_ARRAY_BUFFER, _normals.size() * sizeof(ga_vec3f), &_normals.front(), GL_STATIC_DRAW);
+	assert(glGetError() == GL_NO_ERROR);
+
+	glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 0, 0);
+	assert(glGetError() == GL_NO_ERROR);
+	glEnableVertexAttribArray(3);
+	assert(glGetError() == GL_NO_ERROR);
+
+	// unbind vertex array
+	glBindVertexArray(0);
+
+	err = glGetError();
+	assert(err == GL_NO_ERROR);
+}
+
+void ga_mesh::assemble_drawcall(ga_static_drawcall& draw)
+{
+	draw._vao = _vao;
+	draw._index_count = _index_count;
+	draw._draw_mode = GL_TRIANGLES;
+	draw._material = _material;
+}
+
+
+

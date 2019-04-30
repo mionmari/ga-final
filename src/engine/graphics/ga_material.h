@@ -124,27 +124,6 @@ private:
 	std::chrono::high_resolution_clock::time_point _start_time = std::chrono::high_resolution_clock::now();
 };
 
-/*
-** A material which supports vertex animation.
-*/
-class ga_animated_material : public ga_material
-{
-public:
-	ga_animated_material();
-	ga_animated_material(struct ga_skeleton* skeleton);
-	~ga_animated_material();
-
-	virtual bool init() override;
-	virtual void bind(const ga_mat4f& view_proj, const ga_mat4f& transform, ga_frame_params* params) override;
-
-private:
-	ga_shader * _vs;
-	ga_shader* _fs;
-	ga_program* _program;
-
-	struct ga_skeleton* _skeleton;
-};
-
 
 /*
 ** PBR material.
@@ -155,7 +134,7 @@ public:
 	ga_pbr_material();
 	ga_pbr_material
 	(
-		const char* albedo, 
+		const char* albedo,
 		const char* normal,
 		const char* metallic,
 		const char* roughness,

@@ -1,20 +1,21 @@
 #version 400
-layout (location = 0) in vec3 vertexPosition;
-layout (location = 2) in vec2 vertexUV;
-layout (location = 3) in vec3 vertexNormal;
+
+layout(location = 0) in vec3 in_vertex;
+layout(location = 2) in vec2 in_texcoord;
+layout(location = 3) in vec3 in_normal;
 
 out vec2 o_uv;
 out vec3 o_normal;
-out vec4 o_worldPos;
+out vec3 o_worldPos;
 
 uniform mat4 u_mvp;
-
+uniform mat4 u_world;
 
 void main()
 {
-	o_uv = vertexUV;
-	o_normal = (u_mvp * vec4(vertexNormal, 0.0)).xyz;
-	o_worldPos = u_mvp * vec4(vertexPosition, 1.0);
-	gl_Position = o_worldPos;
-
+	o_uv = in_texcoord;
+	o_normal = (u_mvp * vec4(in_normal, 0.0)).xyz;
+	vec4 pos = u_mvp * vec4(in_vertex, 1.0);
+	o_worldPos = pos.xyz;
+	gl_Position = pos;
 }

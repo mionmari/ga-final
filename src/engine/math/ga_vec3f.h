@@ -44,4 +44,3 @@ inline ga_vec3f ga_vec3f_cross(const ga_vec3f& __restrict a, const ga_vec3f& __r
 	result.z = (a.x * b.y) - (a.y * b.x);
 	return result;
 }
-
