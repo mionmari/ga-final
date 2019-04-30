@@ -1,12 +1,15 @@
-// Original Source: https://learnopengl.com/PBR/Lighting
+// Main source: https://learnopengl.com/PBR/Lighting
+// Normal mapping: http://ogldev.atspace.co.uk/www/tutorial26/tutorial26.html
 
 #version 400
 out vec4 finalColor;
 in vec2 o_uv;
 in vec3 o_normal;
+in vec3 o_tangent;
 in vec3 o_worldPos;
 
 uniform sampler2D u_albedo;
+uniform sampler2D u_normal;
 uniform sampler2D u_metallic;
 uniform sampler2D u_roughness;
 uniform sampler2D u_ao;
@@ -14,18 +17,20 @@ uniform bool u_lighting_enabled;
 uniform vec3 u_cam_pos;
 
 const vec3 lightPos = vec3(1.5, 1.5, 1);
-const vec3 lightColor = vec3(20, 20, 20);
+const vec3 lightColor = vec3(20, 20, 20); 
 const float PI = 3.14159265359;
   
 float DistributionGGX(vec3 N, vec3 H, float roughness);
 float GeometrySchlickGGX(float NdotV, float roughness);
 float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness);
-vec3 fresnelSchlick(float cosTheta, vec3 F0);
+vec3 FresnelSchlick(float cosTheta, vec3 F0);
+
+vec3 CalcBumpedNormal();
 
 void main()
 {	
     vec3 albedo     = texture(u_albedo, o_uv).rgb;
-    vec3 normal     = o_normal;
+    vec3 normal     = CalcBumpedNormal();//o_normal;
     float metallic  = texture(u_metallic, o_uv).r;
     float roughness = texture(u_roughness, o_uv).r;
     float ao        = texture(u_ao, o_uv).r;
@@ -49,7 +54,7 @@ void main()
     // cook-torrance brdf
     float NDF = DistributionGGX(N, H, roughness);        
     float G   = GeometrySmith(N, V, L, roughness);      
-    vec3 F    = fresnelSchlick(max(dot(H, V), 0.0), F0);       
+    vec3 F    = FresnelSchlick(max(dot(H, V), 0.0), F0);       
     
     vec3 kS = F;
     vec3 kD = vec3(1.0) - kS;
@@ -76,10 +81,24 @@ void main()
 	else
 	{
         finalColor = texture(u_albedo, o_uv);
-        //vec4(1.,1.,0.,1.);
-		//finalColor = vec4(albedo, 1.0);
 	}
 }  
+
+vec3 CalcBumpedNormal()
+{
+    vec3 normal = normalize(o_normal);
+    vec3 tangent = normalize(o_tangent);
+    tangent = normalize(tangent - dot(tangent, normal) * normal);
+    vec3 bitangent = cross(tangent, normal);
+    vec3 bumpMapNormal = texture(u_normal, o_uv).xyz;
+    bumpMapNormal = 2.0 * bumpMapNormal - vec3(1.0, 1.0, 1.0);
+    vec3 newNormal;
+    mat3 TBN = mat3(tangent, bitangent, normal);
+    newNormal = TBN * bumpMapNormal;
+    newNormal = normalize(newNormal);
+    return newNormal;
+}
+
 
 float DistributionGGX(vec3 N, vec3 H, float roughness)
 {
@@ -115,7 +134,7 @@ float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
     return ggx1 * ggx2;
 }
 
-vec3 fresnelSchlick(float cosTheta, vec3 F0)
+vec3 FresnelSchlick(float cosTheta, vec3 F0)
 {
     return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
 }  

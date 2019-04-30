@@ -41,11 +41,12 @@ private:
 
 	uint32_t _index_count;
 	uint32_t _vao;
-	GLuint _vbo[4];
+	GLuint _vbo[5];
 	std::vector<GLushort> _index_array;
 	std::vector<ga_vec3f> _vertex_array;
 	std::vector<ga_vec3f> _normals;
 	std::vector<ga_vec2f> _texcoords;
+	std::vector<ga_vec3f> _tangents;
 };
 
 class ga_model_component : public ga_component

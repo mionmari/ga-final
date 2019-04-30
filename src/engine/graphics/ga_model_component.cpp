@@ -93,7 +93,7 @@ ga_mesh::ga_mesh()
 }
 ga_mesh::~ga_mesh()
 {
-	glDeleteBuffers(4, _vbo);
+	glDeleteBuffers(5, _vbo);
 	glDeleteVertexArrays(1, &_vao);
 
 }
@@ -105,7 +105,7 @@ void ga_mesh::create_from_aiMesh(aiMesh* mesh, const aiScene* scene, const struc
 	// request vertex array object and vertex buffer objects
 	glGenVertexArrays(1, &_vao);
 	glBindVertexArray(_vao);
-	glGenBuffers(4, _vbo);
+	glGenBuffers(5, _vbo);
 
 	// TODO: Homework 4
 	// load vertex positions, indices, uv's and normals from importer mesh into our data structure
@@ -159,10 +159,45 @@ void ga_mesh::create_from_aiMesh(aiMesh* mesh, const aiScene* scene, const struc
 		_normals.push_back(norm);
 	}
 
-	// TODO: Homework 4
-	// set the diffuse color for the material 
-	/*_material = mat;
-	_material->set_color(ga_vec3f{ 0.5f, 0.5f, 0.5f });*/
+	// Compute tangents
+	_tangents.resize(mesh->mNumVertices, ga_vec3f::zero_vector());
+	for (unsigned int i = 0; i < _index_array.size(); i += 3) {
+		GLushort index0 = _index_array[i];
+		GLushort index1 = _index_array[i + 1];
+		GLushort index2 = _index_array[i + 2];
+
+		ga_vec3f v0 = _vertex_array[index0];
+		ga_vec3f v1 = _vertex_array[index1];
+		ga_vec3f v2 = _vertex_array[index2];
+
+		ga_vec3f edge1 = v1 - v0;
+		ga_vec3f edge2 = v2 - v0;
+
+		float deltaU1 = _texcoords[index1].x - _texcoords[index0].x;
+		float deltaV1 = _texcoords[index1].y - _texcoords[index0].y;
+		float deltaU2 = _texcoords[index2].x - _texcoords[index0].x;
+		float deltaV2 = _texcoords[index2].y - _texcoords[index0].y;
+
+		float f = 1.0f / (deltaU1 * deltaV2 - deltaU2 * deltaV1);
+
+		ga_vec3f tangent, bitangent;
+
+		tangent.x = f * (deltaV2 * edge1.x - deltaV1 * edge2.x);
+		tangent.y = f * (deltaV2 * edge1.y - deltaV1 * edge2.y);
+		tangent.z = f * (deltaV2 * edge1.z - deltaV1 * edge2.z);
+
+		bitangent.x = f * (-deltaU2 * edge1.x - deltaU1 * edge2.x);
+		bitangent.y = f * (-deltaU2 * edge1.y - deltaU1 * edge2.y);
+		bitangent.z = f * (-deltaU2 * edge1.z - deltaU1 * edge2.z);
+
+		_tangents[index0] += tangent;
+		_tangents[index1] += tangent;
+		_tangents[index2] += tangent;
+	}
+
+	for (unsigned int i = 0; i < _tangents.size(); i++) {
+		_tangents[i].normalize();
+	}
 
 	// TODO: Homework 4 
 	// set up vertex and element array buffers for positions, indices, uv's and normals
@@ -206,7 +241,6 @@ void ga_mesh::create_from_aiMesh(aiMesh* mesh, const aiScene* scene, const struc
 		assert(glGetError() == GL_NO_ERROR);
 	}
 
-
 	// Set up buffer for normals
 	glBindBuffer(GL_ARRAY_BUFFER, _vbo[3]);
 	assert(glGetError() == GL_NO_ERROR);
@@ -216,6 +250,17 @@ void ga_mesh::create_from_aiMesh(aiMesh* mesh, const aiScene* scene, const struc
 	glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 0, 0);
 	assert(glGetError() == GL_NO_ERROR);
 	glEnableVertexAttribArray(3);
+	assert(glGetError() == GL_NO_ERROR);
+
+	// Set up buffer for tangents
+	glBindBuffer(GL_ARRAY_BUFFER, _vbo[4]);
+	assert(glGetError() == GL_NO_ERROR);
+	glBufferData(GL_ARRAY_BUFFER, _tangents.size() * sizeof(ga_vec3f), &_tangents.front(), GL_STATIC_DRAW);
+	assert(glGetError() == GL_NO_ERROR);
+
+	glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, 0, 0);
+	assert(glGetError() == GL_NO_ERROR);
+	glEnableVertexAttribArray(4);
 	assert(glGetError() == GL_NO_ERROR);
 
 	// unbind vertex array

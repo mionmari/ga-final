@@ -101,7 +101,6 @@ int main(int argc, const char** argv)
 	wood_maps.metallic_map = "data/textures/bamboo-wood-semigloss-Unreal-Engine/bamboo-wood-semigloss-metal.png";
 	wood_maps.roughness_map = "data/textures/bamboo-wood-semigloss-Unreal-Engine/bamboo-wood-semigloss-roughness.png";
 	wood_maps.ao_map = "data/textures/bamboo-wood-semigloss-Unreal-Engine/bamboo-wood-semigloss-ao.png";
-
 	
 	// sphere models
 	ga_model_component sphere_rust_mesh(&sphere_rust, "data/models/sphere_smooth.obj", &rust_maps);

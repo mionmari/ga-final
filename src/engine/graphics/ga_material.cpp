@@ -366,7 +366,7 @@ void ga_pbr_material::bind(const ga_mat4f& view_proj, const ga_mat4f& transform,
 	ga_uniform lighting_enabled_uniform = _program->get_uniform("u_lighting_enabled");
 
 	ga_uniform albedo_uniform = _program->get_uniform("u_albedo");
-	//ga_uniform normal_uniform = _program->get_uniform("u_normal");
+	ga_uniform normal_uniform = _program->get_uniform("u_normal");
 	ga_uniform metallic_uniform = _program->get_uniform("u_metallic");
 	ga_uniform roughness_uniform = _program->get_uniform("u_roughness");
 	ga_uniform ao_uniform = _program->get_uniform("u_ao");
@@ -377,12 +377,12 @@ void ga_pbr_material::bind(const ga_mat4f& view_proj, const ga_mat4f& transform,
 	world_mat_uniform.set(transform);
 	lighting_enabled_uniform.set(params->_render_settings->_lighting_enabled);
 	cam_pos_uniform.set(params->_cam_pos);
-
+	
 	albedo_uniform.set(*_albedo, 0);
-	//normal_uniform.set(*_normal, 1);
-	metallic_uniform.set(*_metallic, 1);
-	roughness_uniform.set(*_roughness, 2);
-	ao_uniform.set(*_ao, 3);
+	normal_uniform.set(*_normal, 1);
+	metallic_uniform.set(*_metallic, 2);
+	roughness_uniform.set(*_roughness, 3);
+	ao_uniform.set(*_ao, 4);
 
 	glDisable(GL_BLEND);
 	glEnable(GL_DEPTH_TEST);
